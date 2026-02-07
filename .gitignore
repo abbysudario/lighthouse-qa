@@ -1,0 +1,20 @@
+# Dependencies
+node_modules/
+
+# Environment variables
+.env
+
+# Playwright outputs
+playwright-report/
+test-results/
+blob-report/
+
+# Generated reports
+reports/*.json
+reports/*.md
+
+#Misc
+.DS_Store
+
+# Optional logs
+*.log
