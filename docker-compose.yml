@@ -1,0 +1,10 @@
+services:
+  lighthouse-qa:
+    build: .
+    environment:
+      SAUCE_USERNAME: ${SAUCE_USERNAME}
+      SAUCE_PASSWORD: ${SAUCE_PASSWORD}
+      FLAKE_MODE: ${FLAKE_MODE:-false}
+    volumes:
+      - ./reports:/app/reports
+      - ./playwright-report:/app/playwright-report
