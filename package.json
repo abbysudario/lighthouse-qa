@@ -1,4 +1,16 @@
 {
+  "name": "lighthouse-qa",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "test:report": "playwright show-report",
+
+    "docker:build": "docker build -t lighthouse-qa .",
+    "docker:test": "docker run --rm --env-file .env -v $(pwd)/reports:/app/reports -v $(pwd)/playwright-report:/app/playwright-report lighthouse-qa",
+    "docker:compose": "docker compose run --rm lighthouse"
+  },
   "devDependencies": {
     "@playwright/test": "^1.58.2",
     "dotenv": "^17.2.4"

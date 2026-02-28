@@ -1,0 +1,2 @@
+Lighthouse is an AI-assisted QA intelligence system designed to help teams ship with confidence.
+While traditional test automation focuses on execution, Lighthouse focuses on interpretation: analyzing test results, detecting flaky behavior, and highlighting release risk using deterministic signals combined with AI-generated insights.
