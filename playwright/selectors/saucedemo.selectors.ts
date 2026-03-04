@@ -6,19 +6,19 @@ export const selectors = {
     error: '[data-test="error"]'
   },
   inventory: {
-    title: '.title',
-    item: '.inventory_item',
+    title: '[data-test="title"]',
+    item: '[data-test="inventory-item"]',
     addToCartButtonByName: (name: string) =>
-      `xpath=//div[contains(@class,"inventory_item")]//div[@class="inventory_item_name" and text()="${name}"]/ancestor::div[contains(@class,"inventory_item")]//button`,
-    cartLink: '.shopping_cart_link',
-    cartBadge: '.shopping_cart_badge',
-    sort: '[data-test="product_sort_container"]'
+  `[data-test="add-to-cart-${name.toLowerCase().replace(/ /g, '-')}"]`,
+    cartLink: '[data-test="shopping-cart-link"]',
+    cartBadge: '[data-test="shopping-cart-badge"]',
+    sort: '[data-test="product-sort-container"]'
   },
   cart: {
-    title: '.title',
+    title: '[data-test="title"]',
     checkout: '[data-test="checkout"]',
     removeByName: (name: string) =>
-      `xpath=//div[@class="cart_item"]//div[@class="inventory_item_name" and text()="${name}"]/ancestor::div[@class="cart_item"]//button`
+`[data-test="remove-${name.toLowerCase().replace(/ /g, '-')}"]`
   },
   checkout: {
     firstName: '[data-test="firstName"]',
@@ -26,6 +26,6 @@ export const selectors = {
     postalCode: '[data-test="postalCode"]',
     continue: '[data-test="continue"]',
     finish: '[data-test="finish"]',
-    completeHeader: '.complete-header'
+    completeHeader: '[data-test="complete-header"]'
   }
 } as const;
