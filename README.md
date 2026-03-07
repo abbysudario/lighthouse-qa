@@ -1,6 +1,6 @@
-🔦 Lighthouse
+# 🔦 Lighthouse
 
-Lighthouse is a QA intelligence system that surfaces blindspots and suggests intentional, impactful changes — without making decisions for you. Think of it as a northstar for shipping: it doesn't tell you to ship or not to ship, it tells you what your tests are actually saying so you can decide with confidence.
+Lighthouse is a QA intelligence system that surfaces blindspots and suggests intentional, impactful changes without making decisions for you. Think of it as a northstar for shipping: it doesn't tell you to ship or not to ship, it tells you what your tests are actually saying so you can decide with confidence.
 
 Tests produce truth. Lighthouse produces clarity.
 
@@ -8,15 +8,15 @@ Tests produce truth. Lighthouse produces clarity.
 
 ---
 
-Lighthouse sits on top of your test suite as a signal layer. It observes, interprets, and warns. It doesn't replace tests — it gives them a voice. Most QA systems answer "did it pass?" Lighthouse asks the harder questions: which tests are unreliable, what's slowing the pipeline down, and is this build actually safe to ship?
+Lighthouse sits on top of your test suite as a signal layer. It observes, interprets, and warns. It doesn't replace tests. It gives them a voice. Most QA systems answer "did it pass?" Lighthouse asks the harder questions: which tests are unreliable, what's slowing the pipeline down, and is this build actually safe to ship?
 
-Every decision in this project is intentional. The selectors use data-test attributes over CSS classes. Commits represent capabilities, not file noise. Files earn their place — nothing exists as a placeholder. That ethos runs through every layer of the system.
+Every decision in this project is intentional. The selectors use data-test attributes over CSS classes. Commits represent capabilities, not file noise. Files earn their place. Nothing exists as a placeholder. That ethos runs through every layer of the system.
 
 ---
 
 🧰 **Stack**
 
-TypeScript, Playwright, Docker, GitHub Actions, ts-node, dotenv. Targets [SauceDemo](https://www.saucedemo.com) — a stable e-commerce demo chosen because the infrastructure tells the story, not the app.
+TypeScript, Playwright, Docker, GitHub Actions, ts-node, dotenv. Targets [SauceDemo](https://www.saucedemo.com), a stable e-commerce demo chosen because the infrastructure tells the story, not the app.
 
 ---
 
@@ -77,7 +77,7 @@ docker compose run --rm lighthouse-qa npx playwright test
 
 🌊 **FLAKE_MODE**
 
-Stability tests can run up to 5 iterations to surface flakiness before it hits production. The mode flows through the entire system — from CI input all the way to test execution:
+Stability tests can run up to 5 iterations to surface flakiness before it hits production. The mode flows through the entire system from CI input all the way to test execution:
 ```
 workflow_dispatch input → github.event.inputs.flake_mode
                        ↓
@@ -122,7 +122,7 @@ After every run, Lighthouse parses the raw Playwright output and produces a huma
 
 ⚙️ **CI**
 
-Every push and PR triggers the full pipeline — tests, analysis, artifact upload. A manual `workflow_dispatch` trigger is available with an optional `flake_mode` input for on-demand flake detection runs.
+Every push and PR triggers the full pipeline: tests, analysis, artifact upload. A manual `workflow_dispatch` trigger is available with an optional `flake_mode` input for on-demand flake detection runs.
 
 ---
 
@@ -130,8 +130,8 @@ Every push and PR triggers the full pipeline — tests, analysis, artifact uploa
 
 | Milestone | Focus | Status |
 |---|---|---|
-| 0 | Foundation — Playwright, Docker, CI | ✅ |
-| 1 | Test coverage — checkout, negative, stability | ✅ |
-| 2 | Signal layer — analyzer, summary, CI integration | ✅ |
+| 0 | Foundation: Playwright, Docker, CI | ✅ |
+| 1 | Test coverage: checkout, negative, stability | ✅ |
+| 2 | Signal layer: analyzer, summary, CI integration | ✅ |
 | 2.5 | Page Object Model | ✅ |
-| 3 | AI analysis — failure explanation, release readiness | ⬜ |
+| 3 | AI analysis: failure explanation, release readiness | ⬜ |
