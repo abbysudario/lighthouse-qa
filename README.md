@@ -1,113 +1,73 @@
-# 🔦 Lighthouse
+🔦 Lighthouse
 
-Lighthouse is an AI-assisted QA intelligence system designed to help teams ship with confidence.
+Lighthouse is a QA intelligence system that surfaces blindspots and suggests intentional, impactful changes — without making decisions for you. Think of it as a northstar for shipping: it doesn't tell you to ship or not to ship, it tells you what your tests are actually saying so you can decide with confidence.
 
-While traditional test automation focuses on execution, Lighthouse focuses on interpretation: analyzing test results, detecting flaky behavior, and highlighting release risk using deterministic signals combined with AI-generated insights.
+Tests produce truth. Lighthouse produces clarity.
 
-> **🔄 Status: In Progress** — Signal layer complete. Page Object Model refactor and AI analysis layer coming next.
-
----
-
-## What Lighthouse Does
-
-Tests produce signals. Lighthouse observes, interprets, and warns.
-
-- **Does not decide pass/fail** — that's the test's job
-- **Does not replace tests** — it gives them a voice
-- **Observes, interprets, and warns** — turning raw results into actionable insights
+> 🔄 In progress — AI analysis layer coming next.
 
 ---
 
-## Target Application
+Lighthouse sits on top of your test suite as a signal layer. It observes, interprets, and warns. It doesn't replace tests — it gives them a voice. Most QA systems answer "did it pass?" Lighthouse asks the harder questions: which tests are unreliable, what's slowing the pipeline down, and is this build actually safe to ship?
 
-[SauceDemo](https://www.saucedemo.com) — a stable, predictable e-commerce demo app used as the test target. Chosen for its known user roles, stable test data, and predictable UI flows.
-
----
-
-## Tech Stack
-
-| Tool | Purpose |
-|---|---|
-| TypeScript | Primary language |
-| Playwright | Test framework |
-| Docker | Containerized test execution |
-| GitHub Actions | CI pipeline |
-| Node.js 20 | Runtime |
-| dotenv | Environment variable management |
-| ts-node | TypeScript script execution |
+Every decision in this project is intentional. The selectors use data-test attributes over CSS classes. Commits represent capabilities, not file noise. Files earn their place — nothing exists as a placeholder. That ethos runs through every layer of the system.
 
 ---
 
-## Project Structure
+🧰 **Stack**
+
+TypeScript, Playwright, Docker, GitHub Actions, ts-node, dotenv. Targets [SauceDemo](https://www.saucedemo.com) — a stable e-commerce demo chosen because the infrastructure tells the story, not the app.
+
+---
+
+🗂️ **Structure**
 ```
 lighthouse-qa/
 ├─ playwright/
-│  ├─ global-setup.ts            # env validation and FLAKE_MODE config
-│  ├─ helpers/
-│  │  └─ ui.ts                   # reusable login helper
+│  ├─ global-setup.ts            # env validation, FLAKE_MODE config
+│  ├─ pages/                     # page object model
+│  │  ├─ LoginPage.ts
+│  │  ├─ InventoryPage.ts
+│  │  ├─ CartPage.ts
+│  │  └─ CheckoutPage.ts
 │  ├─ selectors/
 │  │  └─ saucedemo.selectors.ts  # centralized data-test selectors
 │  └─ tests/
-│     ├─ smoke.spec.ts           # baseline login check
-│     ├─ checkout.spec.ts        # full purchase flow
-│     ├─ negative.spec.ts        # error handling and edge cases
-│     └─ stability.spec.ts       # flake detection with FLAKE_MODE
+│     ├─ smoke.spec.ts           # is the app alive?
+│     ├─ checkout.spec.ts        # does the core flow work?
+│     ├─ negative.spec.ts        # does it fail gracefully?
+│     └─ stability.spec.ts       # can we trust it consistently?
 ├─ scripts/
 │  └─ analyze.ts                 # quality signal analyzer
-├─ reports/                      # generated reports (gitignored)
+├─ reports/                      # generated, gitignored
 ├─ playwright.config.ts
 ├─ tsconfig.json
 ├─ Dockerfile
 ├─ docker-compose.yml
 └─ .github/workflows/
-   └─ lighthouse-ci.yml          # CI pipeline
+   └─ lighthouse-ci.yml
 ```
 
 ---
 
-## Test Coverage
-
-| Spec | Tests | What it covers |
-|---|---|---|
-| `smoke.spec.ts` | 1 | App is reachable, login works |
-| `checkout.spec.ts` | 1 | Full purchase flow completes |
-| `negative.spec.ts` | 4 | App fails gracefully on bad input |
-| `stability.spec.ts` | 3 | Flows pass consistently |
-
----
-
-## Running Locally
-
-### Prerequisites
-- Node.js 20+
-- Docker Desktop (for container runs)
-
-### Setup
+▶️ **Running it**
 ```bash
 git clone https://github.com/abbysudario/lighthouse-qa.git
 cd lighthouse-qa
 npm install
 npx playwright install --with-deps
 cp .env.example .env
-# fill in your credentials in .env
+# add your credentials to .env
 ```
 
-### Run tests
+Run the tests, analyze the results, view the report:
 ```bash
 npm test
-```
-
-### Analyze results
-```bash
 npm run analyze
-```
-
-### View HTML report
-```bash
 npm run test:report
 ```
 
-### Run in Docker
+In Docker:
 ```bash
 docker compose build
 docker compose run --rm lighthouse-qa npx playwright test
@@ -115,11 +75,9 @@ docker compose run --rm lighthouse-qa npx playwright test
 
 ---
 
-## FLAKE_MODE
+🌊 **FLAKE_MODE**
 
-Lighthouse includes a built-in flake detection mode that runs stability tests multiple times to surface timing issues and inconsistent behavior.
-
-**How it flows through the system:**
+Stability tests can run up to 5 iterations to surface flakiness before it hits production. The mode flows through the entire system — from CI input all the way to test execution:
 ```
 workflow_dispatch input → github.event.inputs.flake_mode
                        ↓
@@ -132,26 +90,13 @@ workflow_dispatch input → github.event.inputs.flake_mode
          stability.spec.ts uses ITERATIONS = 1 or 5
 ```
 
-**To enable locally:**
-```bash
-# in .env
-FLAKE_MODE=true
-npm test
-```
-
-**To enable in CI:**
-Go to GitHub Actions → Lighthouse CI → Run workflow → set `flake_mode` to `true`
+Enable locally by setting `FLAKE_MODE=true` in `.env`. Enable in CI via GitHub Actions → Lighthouse CI → Run workflow → set `flake_mode` to `true`.
 
 ---
 
-## Quality Signal Report
+📊 **Quality signal report**
 
-After every test run, Lighthouse generates a structured quality signal report:
-```bash
-npm run analyze
-```
-
-**Terminal output:**
+After every run, Lighthouse parses the raw Playwright output and produces a human-readable signal report plus a structured `reports/summary.json` for downstream AI analysis:
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   🔦 Lighthouse — Quality Signal Report
@@ -173,42 +118,20 @@ npm run analyze
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-**Structured output:** `reports/summary.json` — used as input for Milestone 3 AI analysis.
+---
+
+⚙️ **CI**
+
+Every push and PR triggers the full pipeline — tests, analysis, artifact upload. A manual `workflow_dispatch` trigger is available with an optional `flake_mode` input for on-demand flake detection runs.
 
 ---
 
-## CI Pipeline
-
-Every push and pull request triggers the full pipeline automatically:
-
-1. Checkout repository
-2. Setup Node.js 20
-3. Install dependencies
-4. Install Playwright browsers
-5. Run tests
-6. Analyze results
-7. Upload Playwright report artifact
-8. Upload results and summary artifact
-
-**Manual trigger:** GitHub Actions → Lighthouse CI → Run workflow
-
----
-
-## Roadmap
+🗺️ **Roadmap**
 
 | Milestone | Focus | Status |
 |---|---|---|
-| Milestone 0 | Foundation — Playwright, Docker, CI | ✅ Complete |
-| Milestone 1 | Test coverage — checkout, negative, stability | ✅ Complete |
-| Milestone 2 | Signal layer — analyzer, summary, CI integration | ✅ Complete |
-| Milestone 2.5 | Page Object Model refactor | ⬜ Planned |
-| Milestone 3 | AI analysis — failure explanation, release readiness | ⬜ Planned |
-
----
-
-## Design Principles
-
-- **Commits = capabilities** — every commit represents a working, meaningful state
-- **Data-test attributes** — selectors use `data-test` over CSS classes
-- **No placeholder files** — every file contains real logic
-- **Clarity over cleverness** — readable, defensible, intentional code
+| 0 | Foundation — Playwright, Docker, CI | ✅ |
+| 1 | Test coverage — checkout, negative, stability | ✅ |
+| 2 | Signal layer — analyzer, summary, CI integration | ✅ |
+| 2.5 | Page Object Model | ✅ |
+| 3 | AI analysis — failure explanation, release readiness | ⬜ |
