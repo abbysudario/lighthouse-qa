@@ -200,7 +200,7 @@ Every push and pull request triggers the full pipeline automatically:
 |---|---|---|
 | Milestone 0 | Foundation — Playwright, Docker, CI | ✅ Complete |
 | Milestone 1 | Test coverage — checkout, negative, stability | ✅ Complete |
-| Milestone 2 | Signal layer — analyzer, summary, CI integration | 🔄 In Progress |
+| Milestone 2 | Signal layer — analyzer, summary, CI integration | ✅ Complete |
 | Milestone 2.5 | Page Object Model refactor | ⬜ Planned |
 | Milestone 3 | AI analysis — failure explanation, release readiness | ⬜ Planned |
 
