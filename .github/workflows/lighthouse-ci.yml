@@ -4,6 +4,11 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+    inputs:
+      flake_mode:
+        description: 'Enable flake detection mode (runs stability tests 5x)'
+        required: false
+        default: 'false'
 
 jobs:
   playwright:
@@ -12,11 +17,14 @@ jobs:
     env:
       SAUCE_USERNAME: ${{ secrets.SAUCE_USERNAME }}
       SAUCE_PASSWORD: ${{ secrets.SAUCE_PASSWORD }}
+      FLAKE_MODE: ${{ github.event.inputs.flake_mode || 'false' }}
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 20
 
@@ -29,6 +37,10 @@ jobs:
       - name: Run tests
         run: npm test
 
+      - name: Analyze test results
+        if: always()
+        run: npm run analyze
+
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v4
@@ -36,7 +48,7 @@ jobs:
           name: playwright-report
           path: playwright-report/
 
-      - name: Upload results
+      - name: Upload results and summary
         if: always()
         uses: actions/upload-artifact@v4
         with:
