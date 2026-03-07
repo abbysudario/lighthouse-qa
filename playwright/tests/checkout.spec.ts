@@ -1,35 +1,39 @@
-import { test, expect } from '@playwright/test';
-import { selectors } from '../selectors/saucedemo.selectors';
-import { login } from '../helpers/ui';
+import { test } from '@playwright/test';
+import { LoginPage } from '../pages/LoginPage';
+import { InventoryPage } from '../pages/InventoryPage';
+import { CartPage } from '../pages/CartPage';
+import { CheckoutPage } from '../pages/CheckoutPage';
 
 test.describe('Checkout Flow', () => {
   test('completes a full purchase as standard_user', async ({ page }) => {
-    await login(page);
+    const loginPage = new LoginPage(page);
+    const inventoryPage = new InventoryPage(page);
+    const cartPage = new CartPage(page);
+    const checkoutPage = new CheckoutPage(page);
+
+    // Login
+    await loginPage.loginAsStandardUser();
+    await loginPage.expectLoginSuccess();
 
     // Add item to cart
-    await page.click(selectors.inventory.addToCartButtonByName('Sauce Labs Backpack'));
-    await expect(page.locator(selectors.inventory.cartBadge)).toHaveText('1');
+    await inventoryPage.addToCart('Sauce Labs Backpack');
+    await inventoryPage.expectCartBadgeCount(1);
 
     // Go to cart
-    await page.click(selectors.inventory.cartLink);
-    await expect(page).toHaveURL(/cart/);
+    await inventoryPage.goToCart();
+    await cartPage.expectPageLoaded();
 
     // Proceed to checkout
-    await page.click(selectors.cart.checkout);
-    await expect(page).toHaveURL(/checkout-step-one/);
+    await cartPage.proceedToCheckout();
+    await checkoutPage.expectOnStepOne();
 
-    // Fill in shipping info
-    await page.fill(selectors.checkout.firstName, 'Jane');
-    await page.fill(selectors.checkout.lastName, 'Doe');
-    await page.fill(selectors.checkout.postalCode, '10001');
-    await page.click(selectors.checkout.continue);
-    await expect(page).toHaveURL(/checkout-step-two/);
+    // Fill shipping info
+    await checkoutPage.fillShippingInfo('Jane', 'Doe', '10001');
+    await checkoutPage.expectOnStepTwo();
 
     // Finish order
-    await page.click(selectors.checkout.finish);
-    await expect(page).toHaveURL(/checkout-complete/);
-
-    // Confirm order completion
-    await expect(page.locator(selectors.checkout.completeHeader)).toHaveText('Thank you for your order!');
+    await checkoutPage.finishOrder();
+    await checkoutPage.expectOrderComplete();
+    await checkoutPage.expectOrderConfirmation();
   });
 });
