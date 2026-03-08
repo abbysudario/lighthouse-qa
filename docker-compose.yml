@@ -1,6 +1,8 @@
 services:
   lighthouse-qa:
     build: .
+    env_file:
+      - .env
     environment:
       SAUCE_USERNAME: ${SAUCE_USERNAME}
       SAUCE_PASSWORD: ${SAUCE_PASSWORD}

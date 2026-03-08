@@ -1,6 +1,8 @@
 import * as dotenv from 'dotenv';
-dotenv.config();
+dotenv.config({ quiet: true });
+
 import Anthropic from '@anthropic-ai/sdk';
+import { Mistral } from '@mistralai/mistralai';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -35,27 +37,13 @@ Based on the test names and files, what important flows or edge cases are not cu
 Be concise, direct, and practical. Write for an engineering team, not a business audience.`;
 }
 
-async function runAIAnalysis(): Promise<void> {
-  const provider = process.env.AI_PROVIDER ?? 'anthropic';
-
-  if (provider !== 'anthropic') {
-    console.log(`AI_PROVIDER is set to '${provider}'. This script currently supports 'anthropic' only.`);
-    process.exit(0);
-  }
-
+async function runWithAnthropic(prompt: string): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     throw new Error('ANTHROPIC_API_KEY environment variable is not set.');
   }
 
   const client = new Anthropic({ apiKey });
-  const summary = loadSummary();
-  const prompt = buildPrompt(summary);
-
-  console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('  🔦 Lighthouse — AI Analysis');
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
-  console.log('  Analyzing test results...\n');
 
   const message = await client.messages.create({
     model: 'claude-haiku-4-5-20251001',
@@ -63,18 +51,106 @@ async function runAIAnalysis(): Promise<void> {
     messages: [{ role: 'user', content: prompt }],
   });
 
-  const responseText = message.content
+  return message.content
     .filter(block => block.type === 'text')
     .map(block => (block as { type: 'text'; text: string }).text)
     .join('\n');
+}
+
+async function runWithMistral(prompt: string): Promise<string> {
+  const apiKey = process.env.MISTRAL_API_KEY;
+  if (!apiKey) {
+    throw new Error('MISTRAL_API_KEY environment variable is not set.');
+  }
+
+  const client = new Mistral({ apiKey });
+
+  const response = await client.chat.complete({
+    model: 'mistral-small-latest',
+    messages: [{ role: 'user', content: prompt }],
+  });
+
+  const content = response.choices?.[0]?.message?.content;
+  if (!content) {
+    throw new Error('No response received from Mistral.');
+  }
+
+  return typeof content === 'string' ? content : JSON.stringify(content);
+}
+
+async function runWithOllama(prompt: string): Promise<string> {
+  const runningInCI = process.env.CI === 'true';
+
+  if (runningInCI) {
+    console.log('  Ollama runs locally and does not support CI environments.');
+    console.log('  Set AI_PROVIDER=mistral or AI_PROVIDER=anthropic for CI runs.\n');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+    process.exit(0);
+  }
+
+  const response = await fetch('http://localhost:11434/api/generate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'llama3:instruct',
+      prompt,
+      stream: false,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Ollama request failed: ${response.status} ${response.statusText}`);
+  }
+
+  const data = await response.json() as { response: string };
+
+  if (!data.response) {
+    throw new Error('No response received from Ollama.');
+  }
+
+  return data.response;
+}
+
+async function runAIAnalysis(): Promise<void> {
+  const provider = process.env.AI_PROVIDER ?? 'mistral';
+
+  console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('  🔦 Lighthouse — AI Analysis');
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+  console.log(`  Provider: ${provider}`);
+  console.log('  Analyzing test results...\n');
+
+  const summary = loadSummary();
+  const prompt = buildPrompt(summary);
+
+  let responseText: string;
+  let model: string;
+
+  if (provider === 'anthropic') {
+    responseText = await runWithAnthropic(prompt);
+    model = 'claude-haiku-4-5-20251001';
+  } else if (provider === 'mistral') {
+    responseText = await runWithMistral(prompt);
+    model = 'mistral-small-latest';
+  } else if (provider === 'ollama') {
+    responseText = await runWithOllama(prompt);
+    model = 'llama3:instruct';
+  } else {
+    console.log(`\n  AI_PROVIDER '${provider}' is not currently configured in Lighthouse.`);
+    console.log('  Built-in providers: anthropic, mistral, ollama');
+    console.log('  To add a new provider, update the runAIAnalysis function in scripts/ai-analyze.ts');
+    console.log('  and add a new provider function following the pattern of runWithAnthropic or runWithMistral.\n');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+    process.exit(0);
+  }
 
   console.log(responseText);
   console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
   const insights = {
     generatedAt: new Date().toISOString(),
-    provider: 'anthropic',
-    model: 'claude-haiku-4-5-20251001',
+    provider,
+    model,
     insights: responseText,
   };
 
