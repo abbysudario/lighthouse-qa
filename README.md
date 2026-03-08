@@ -4,7 +4,7 @@ Lighthouse is a QA intelligence system that surfaces blindspots and suggests int
 
 Tests produce truth. Lighthouse produces clarity.
 
-> 🔄 In progress — AI analysis layer coming next.
+> 🔄 In progress — Mistral integration coming next.
 
 ---
 
@@ -38,7 +38,8 @@ lighthouse-qa/
 │     ├─ negative.spec.ts        # does it fail gracefully?
 │     └─ stability.spec.ts       # can we trust it consistently?
 ├─ scripts/
-│  └─ analyze.ts                 # quality signal analyzer
+│  ├─ analyze.ts                 # quality signal analyzer
+│  └─ ai-analyze.ts              # AI insights engine
 ├─ reports/                      # generated, gitignored
 ├─ playwright.config.ts
 ├─ tsconfig.json
@@ -64,6 +65,7 @@ Run the tests, analyze the results, view the report:
 ```bash
 npm test
 npm run analyze
+npm run ai-analyze
 npm run test:report
 ```
 
@@ -120,9 +122,36 @@ After every run, Lighthouse parses the raw Playwright output and produces a huma
 
 ---
 
+🤖 **AI insights**
+
+After the signal report runs, Lighthouse feeds the results into an AI layer that produces three things: a failure analysis, a release readiness verdict, and specific coverage gap suggestions.
+
+The AI layer is provider-agnostic. Set `AI_PROVIDER` in your `.env` to choose:
+
+**`AI_PROVIDER=anthropic`** — highest quality analysis. Requires an API key from [console.anthropic.com](https://console.anthropic.com). A $5 top-up is enough to get started and goes an extraordinarily long way:
+
+| | Tokens | Cost (Haiku) |
+|---|---|---|
+| Input (summary + prompt) | ~600 tokens | $1 / million tokens |
+| Output (AI analysis) | ~400 tokens | $5 / million tokens |
+| Total per run | ~1,000 tokens | fractions of a cent |
+| **$5 budget** | | **~800,000+ runs** |
+
+**`AI_PROVIDER=mistral`** — free tier, no credit card required, just a phone number. Get an API key at [console.mistral.ai](https://console.mistral.ai). Strong reasoning quality and an open-source model lineup backed by a European privacy standard. The right choice for teams who want zero billing friction.
+
+**`AI_PROVIDER=ollama`** — runs entirely on your local machine. Nothing leaves your environment. The right choice for teams with strict data privacy or compliance requirements running Lighthouse internally. Note: Ollama does not run in CI pipelines like GitHub Actions — it is designed for local and internal infrastructure use only.
+```
+AI_PROVIDER=anthropic    # best quality, requires API key
+AI_PROVIDER=mistral      # free tier, no credit card, open source
+AI_PROVIDER=ollama       # local only, private, enterprise-friendly
+                         # note: does not run in CI by design
+```
+
+---
+
 ⚙️ **CI**
 
-Every push and PR triggers the full pipeline: tests, analysis, artifact upload. A manual `workflow_dispatch` trigger is available with an optional `flake_mode` input for on-demand flake detection runs.
+Every push and PR triggers the full pipeline: tests, quality signal report, AI insights, artifact upload. A manual `workflow_dispatch` trigger is available with an optional `flake_mode` input for on-demand flake detection runs.
 
 ---
 
@@ -134,4 +163,5 @@ Every push and PR triggers the full pipeline: tests, analysis, artifact upload. 
 | 1 | Test coverage: checkout, negative, stability | ✅ |
 | 2 | Signal layer: analyzer, summary, CI integration | ✅ |
 | 2.5 | Page Object Model | ✅ |
-| 3 | AI analysis: failure explanation, release readiness | ⬜ |
+| 3 | AI analysis: failure explanation, release readiness | ✅ |
+| 3.5 | Mistral as default provider | ⬜ |
