@@ -10,10 +10,13 @@
     "docker:build": "docker build -t lighthouse-qa .",
     "docker:test": "docker run --rm --env-file .env -v $(pwd)/reports:/app/reports -v $(pwd)/playwright-report:/app/playwright-report lighthouse-qa",
     "docker:compose": "docker compose run --rm lighthouse-qa",
-    "ai-analyze": "ts-node scripts/ai-analyze.ts"
+    "ai-analyze": "ts-node scripts/ai-analyze.ts",
+	"allure:generate": "rm -rf allure-report; npx allure awesome --output allure-report allure-results",
+	"allure:open": "npx allure open allure-report"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",
+    "allure-playwright": "^3.6.0",
     "dotenv": "^17.2.4",
     "ts-node": "^10.9.2"
   },

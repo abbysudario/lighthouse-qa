@@ -12,6 +12,8 @@ blob-report/
 # Generated reports
 reports/*.json
 reports/*.md
+allure-results/
+allure-report/
 
 #Misc
 .DS_Store

@@ -4,11 +4,15 @@ export default defineConfig({
   testDir: './playwright/tests',
   globalSetup: './playwright/global-setup.ts',
   retries: process.env.CI ? 1 : 0,
-  reporter: [['html'], ['json', { outputFile: 'reports/playwright-results.json' }]],
+  reporter: [
+    ['html'],
+    ['json', { outputFile: 'reports/playwright-results.json' }],
+    ['allure-playwright', { outputFolder: 'allure-results' }],
+  ],
   use: {
     baseURL: 'https://www.saucedemo.com',
     trace: process.env.CI ? 'on-first-retry' : 'retain-on-failure',
     screenshot: 'only-on-failure',
-    video: 'retain-on-failure'
-  }
+    video: 'retain-on-failure',
+  },
 });
