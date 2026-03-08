@@ -36,11 +36,11 @@ jobs:
       - name: Run tests
         run: npm test
 
-      - name: Analyze test results
+      - name: Generate quality signal report
         if: always()
         run: npm run analyze
 
-      - name: Run AI analysis
+      - name: Generate AI insights
         if: always()
         run: npm run ai-analyze
 
