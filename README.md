@@ -4,7 +4,9 @@ Lighthouse is a QA intelligence system that surfaces blindspots and suggests int
 
 Tests produce truth. Lighthouse produces clarity.
 
-> 🔄 In progress — Mistral integration coming next.
+> ✅ Core system complete — AI-assisted QA intelligence, multi-provider support, full CI pipeline.
+
+🔄 Milestone 4 in progress — dashboard reporting with Allure.
 
 ---
 
@@ -73,6 +75,8 @@ In Docker:
 ```bash
 docker compose build
 docker compose run --rm lighthouse-qa npx playwright test
+docker compose run --rm lighthouse-qa npm run analyze
+docker compose run --rm lighthouse-qa npm run ai-analyze
 ```
 
 ---
@@ -126,7 +130,9 @@ After every run, Lighthouse parses the raw Playwright output and produces a huma
 
 After the signal report runs, Lighthouse feeds the results into an AI layer that produces three things: a failure analysis, a release readiness verdict, and specific coverage gap suggestions.
 
-The AI layer is provider-agnostic. Set `AI_PROVIDER` in your `.env` to choose:
+The AI layer is provider-agnostic. Mistral is the default — free, no credit card required, and works both locally and in CI out of the box. Anyone who forks Lighthouse can run it immediately without any billing setup. Set `AI_PROVIDER` in your `.env` to choose a different provider:
+
+**`AI_PROVIDER=mistral`** ⭐ default — free tier, no credit card required, just a phone number. Get an API key at [console.mistral.ai](https://console.mistral.ai). Strong reasoning quality and an open-source model lineup backed by a European privacy standard. The right choice for teams who want zero billing friction and immediate access.
 
 **`AI_PROVIDER=anthropic`** — highest quality analysis. Requires an API key from [console.anthropic.com](https://console.anthropic.com). A $5 top-up is enough to get started and goes an extraordinarily long way:
 
@@ -137,14 +143,33 @@ The AI layer is provider-agnostic. Set `AI_PROVIDER` in your `.env` to choose:
 | Total per run | ~1,000 tokens | fractions of a cent |
 | **$5 budget** | | **~800,000+ runs** |
 
-**`AI_PROVIDER=mistral`** — free tier, no credit card required, just a phone number. Get an API key at [console.mistral.ai](https://console.mistral.ai). Strong reasoning quality and an open-source model lineup backed by a European privacy standard. The right choice for teams who want zero billing friction.
+**`AI_PROVIDER=ollama`** — runs entirely on your local machine using [Ollama](https://ollama.com). Nothing leaves your environment. The right choice for teams with strict data privacy or compliance requirements running Lighthouse internally.
 
-**`AI_PROVIDER=ollama`** — runs entirely on your local machine. Nothing leaves your environment. The right choice for teams with strict data privacy or compliance requirements running Lighthouse internally. Note: Ollama does not run in CI pipelines like GitHub Actions — it is designed for local and internal infrastructure use only.
+Ollama has intentional limitations by design:
+
+- Does not run in Docker containers. Docker's isolated network means `localhost` inside the container refers to the container itself, not your machine. Ollama is not running there.
+- Does not run in CI pipelines like GitHub Actions. CI spins up a clean Linux VM with no Ollama installed.
+- When either environment is detected, Lighthouse exits cleanly with a helpful message rather than failing. This is intentional — Ollama's value is local privacy, not cloud execution.
+
+For teams that want Ollama in Docker, the proper approach is to run Ollama as its own Docker service alongside Lighthouse. This is a known pattern but out of scope for this project.
 ```
+AI_PROVIDER=mistral      # default, free tier, no credit card, open source
 AI_PROVIDER=anthropic    # best quality, requires API key
-AI_PROVIDER=mistral      # free tier, no credit card, open source
 AI_PROVIDER=ollama       # local only, private, enterprise-friendly
-                         # note: does not run in CI by design
+                         # does not run in Docker or CI by design
+```
+
+To change the default, set `AI_PROVIDER` in your `.env` for local runs or in your CI environment block for pipeline runs:
+```bash
+# .env
+AI_PROVIDER=mistral     # default
+AI_PROVIDER=anthropic   # switch to Anthropic locally
+AI_PROVIDER=ollama      # local only, does not run in Docker or CI
+```
+
+To change the default for everyone, update the fallback in `scripts/ai-analyze.ts`:
+```typescript
+const provider = process.env.AI_PROVIDER ?? 'mistral'; // change 'mistral' to your preferred default
 ```
 
 ---
@@ -164,4 +189,5 @@ Every push and PR triggers the full pipeline: tests, quality signal report, AI i
 | 2 | Signal layer: analyzer, summary, CI integration | ✅ |
 | 2.5 | Page Object Model | ✅ |
 | 3 | AI analysis: failure explanation, release readiness | ✅ |
-| 3.5 | Mistral as default provider | ⬜ |
+| 3.5 | Multi-provider support: Mistral, Ollama, Anthropic | ✅ |
+| 4 | Dashboard reporting with Allure | ⬜ |
