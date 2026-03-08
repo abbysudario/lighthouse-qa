@@ -1,5 +1,4 @@
 name: Lighthouse CI
-
 on:
   push:
   pull_request:
@@ -9,7 +8,6 @@ on:
         description: 'Enable flake detection mode (runs stability tests 5x)'
         required: false
         default: 'false'
-
 jobs:
   playwright:
     runs-on: ubuntu-latest
@@ -18,7 +16,8 @@ jobs:
       SAUCE_USERNAME: ${{ secrets.SAUCE_USERNAME }}
       SAUCE_PASSWORD: ${{ secrets.SAUCE_PASSWORD }}
       FLAKE_MODE: ${{ github.event.inputs.flake_mode || 'false' }}
-
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      AI_PROVIDER: anthropic
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -40,6 +39,10 @@ jobs:
       - name: Analyze test results
         if: always()
         run: npm run analyze
+
+      - name: Run AI analysis
+        if: always()
+        run: npm run ai-analyze
 
       - name: Upload Playwright report
         if: always()
