@@ -4,7 +4,7 @@ Lighthouse is a QA intelligence system that surfaces blindspots and suggests int
 
 Tests produce truth. Lighthouse produces clarity.
 
-> ✅ Complete — AI-assisted QA intelligence, multi-provider support, full CI pipeline, Allure dashboard with live hosted results.
+> ✅ Complete: AI-assisted QA intelligence, multi-provider support, full CI pipeline, Allure dashboard with live hosted results.
 
 🔦 **Live Dashboard:** https://abbysudario.github.io/lighthouse-qa/
 
@@ -70,7 +70,7 @@ Run the full pipeline in one command:
 npm run test:full
 ```
 
-`test:full` clears `allure-results/` and `allure-report/` before every run to prevent phantom results from accumulating across runs. Playwright appends result files on every run — without this cleanup, Allure would read stale files alongside fresh ones and produce duplicate or misleading results.
+`test:full` clears `allure-results/` and `allure-report/` before every run to prevent phantom results from accumulating across runs. Playwright appends result files on every run. Without this cleanup, Allure would read stale files alongside fresh ones and produce duplicate or misleading results.
 
 Or step by step:
 ```bash
@@ -117,7 +117,7 @@ workflow_dispatch input → github.event.inputs.flake_mode
 
 Enable locally by setting `FLAKE_MODE=true` in `.env`. Enable in CI via GitHub Actions → Lighthouse CI → Run workflow → set `flake_mode` to `true`.
 
-FLAKE_MODE runs stability tests 5 times in a loop within a single test — it is not the same as Playwright retries. Retries happen when a test fails and Playwright reruns it automatically. FLAKE_MODE proactively stress-tests stability before failure ever occurs.
+FLAKE_MODE runs stability tests 5 times in a loop within a single test. It is not the same as Playwright retries. Retries happen when a test fails and Playwright reruns it automatically. FLAKE_MODE proactively stress-tests stability before failure ever occurs.
 
 ---
 
@@ -128,7 +128,6 @@ After every run, Lighthouse parses the raw Playwright output and produces a huma
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   🔦 Lighthouse — Quality Signal Report
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
   Run Date:        3/6/2026, 3:27:06 PM
   Total Duration:  5.62s
   Total Tests:     9
@@ -137,7 +136,6 @@ After every run, Lighthouse parses the raw Playwright output and produces a huma
   Flaky:           0
   Skipped:         0
   Stability Score: 100%
-
   Slowest Tests:
   → checkout.spec.ts › completes a full purchase as standard_user (1847ms)
   → smoke.spec.ts › standard_user can login and land on Products (1718ms)
@@ -151,11 +149,11 @@ After every run, Lighthouse parses the raw Playwright output and produces a huma
 
 After the signal report runs, Lighthouse feeds the results into an AI layer that produces three things: a failure analysis, a release readiness verdict, and specific coverage gap suggestions.
 
-The AI layer is provider-agnostic. Mistral is the default — free, no credit card required, and works both locally and in CI out of the box. Anyone who forks Lighthouse can run it immediately without any billing setup. Set `AI_PROVIDER` in your `.env` to choose a different provider:
+The AI layer is provider-agnostic. Mistral is the default. It is free, requires no credit card, and works both locally and in CI out of the box. Anyone who forks Lighthouse can run it immediately without any billing setup. Set `AI_PROVIDER` in your `.env` to choose a different provider:
 
-**`AI_PROVIDER=mistral`** ⭐ default — free tier, no credit card required, just a phone number. Get an API key at [console.mistral.ai](https://console.mistral.ai). Strong reasoning quality and an open-source model lineup backed by a European privacy standard. The right choice for teams who want zero billing friction and immediate access.
+**`AI_PROVIDER=mistral`** ⭐ default. Free tier, no credit card required, just a phone number. Get an API key at [console.mistral.ai](https://console.mistral.ai). Strong reasoning quality and an open-source model lineup backed by a European privacy standard. The right choice for teams who want zero billing friction and immediate access.
 
-**`AI_PROVIDER=anthropic`** — highest quality analysis. Requires an API key from [console.anthropic.com](https://console.anthropic.com). A $5 top-up is enough to get started and goes an extraordinarily long way:
+**`AI_PROVIDER=anthropic`** Highest quality analysis. Requires an API key from [console.anthropic.com](https://console.anthropic.com). A $5 top-up is enough to get started and goes an extraordinarily long way:
 
 | | Tokens | Cost (Haiku) |
 |---|---|---|
@@ -164,13 +162,13 @@ The AI layer is provider-agnostic. Mistral is the default — free, no credit ca
 | Total per run | ~1,000 tokens | fractions of a cent |
 | **$5 budget** | | **~800,000+ runs** |
 
-**`AI_PROVIDER=ollama`** — runs entirely on your local machine using [Ollama](https://ollama.com). Nothing leaves your environment. The right choice for teams with strict data privacy or compliance requirements running Lighthouse internally.
+**`AI_PROVIDER=ollama`** Runs entirely on your local machine using [Ollama](https://ollama.com). Nothing leaves your environment. The right choice for teams with strict data privacy or compliance requirements running Lighthouse internally.
 
 Ollama has intentional limitations by design:
 
 - Does not run in Docker containers. Docker's isolated network means `localhost` inside the container refers to the container itself, not your machine. Ollama is not running there.
 - Does not run in CI pipelines like GitHub Actions. CI spins up a clean Linux VM with no Ollama installed.
-- When either environment is detected, Lighthouse exits cleanly with a helpful message rather than failing. This is intentional — Ollama's value is local privacy, not cloud execution.
+- When either environment is detected, Lighthouse exits cleanly with a helpful message rather than failing. This is intentional. Ollama's value is local privacy, not cloud execution.
 
 For teams that want Ollama in Docker, the proper approach is to run Ollama as its own Docker service alongside Lighthouse. This is a known pattern but out of scope for this project.
 ```
@@ -211,11 +209,11 @@ npm run allure:open
 
 **How Playwright connects to Allure:**
 
-`allure-playwright` is the bridge. It listens to Playwright's reporter API and translates each test result into Allure's JSON format, writing one file per test into `allure-results/`. The Allure CLI then reads those files and generates the dashboard. This is why Allure works with any test framework — each has its own translator package but they all produce the same Allure JSON format.
+`allure-playwright` is the bridge. It listens to Playwright's reporter API and translates each test result into Allure's JSON format, writing one file per test into `allure-results/`. The Allure CLI then reads those files and generates the dashboard. This is why Allure works with any test framework. Each framework has its own translator package but they all produce the same Allure JSON format.
 
 **Why the downloaded artifact doesn't open by double-clicking:**
 
-Allure generates a single-page application (SPA). SPAs require a web server to function — the browser blocks JavaScript from loading local resources when opened as a file due to security restrictions. This is why `npm run allure:open` starts a local server rather than just opening the file directly. The GitHub Pages hosted version has no this limitation — it's served over HTTP automatically.
+Allure generates a single-page application (SPA). SPAs require a web server to function. The browser blocks JavaScript from loading local resources when opened as a file due to security restrictions. This is why `npm run allure:open` starts a local server rather than just opening the file directly. The GitHub Pages hosted version has no this limitation. It is served over HTTP automatically.
 
 **Retry display behavior:**
 
@@ -237,9 +235,9 @@ CI uploads three artifacts on every run:
 - `dashboard-playwright` — Playwright HTML report
 - `quality-signals` — signal report, AI insights, raw results JSON
 
-GitHub Pages deployment is handled by `peaceiris/actions-gh-pages@v3` — it pushes the generated `allure-report/` folder to the `gh-pages` branch after every run, which GitHub Pages serves automatically as a static site.
+GitHub Pages deployment is handled by `peaceiris/actions-gh-pages@v3`. It pushes the generated `allure-report/` folder to the `gh-pages` branch after every run, which GitHub Pages serves automatically as a static site.
 
-GitHub Actions permissions are scoped at the job level — only the specific job that deploys to GitHub Pages has write access. The rest of the pipeline runs with read-only permissions. This is more secure than granting broad read/write access at the repository level.
+GitHub Actions permissions are scoped at the job level. Only the specific job that deploys to GitHub Pages has write access. The rest of the pipeline runs with read-only permissions. This is more secure than granting broad read/write access at the repository level.
 
 ---
 
