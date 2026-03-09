@@ -11,6 +11,8 @@ on:
 jobs:
   playwright:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     timeout-minutes: 15
     env:
       SAUCE_USERNAME: ${{ secrets.SAUCE_USERNAME }}
