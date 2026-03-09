@@ -56,6 +56,12 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./allure-report
           publish_branch: gh-pages
+      - name: Post dashboard URL to job summary
+        if: always()
+        run: |
+          echo "## 🔦 Lighthouse Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Live Dashboard:** https://abbysudario.github.io/lighthouse-qa/" >> $GITHUB_STEP_SUMMARY
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v4
