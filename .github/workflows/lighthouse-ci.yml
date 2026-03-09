@@ -11,7 +11,7 @@ on:
         default: 'false'
 
 jobs:
-  playwright:
+  core-tests:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -40,7 +40,7 @@ jobs:
         run: npx playwright install --with-deps
 
       - name: Run tests
-        run: npx playwright test --ignore=playwright/tests/signal.spec.ts
+        run: npx playwright test --grep-invert "Signal Generation"
 
       - name: Generate quality signal report
         if: always()
@@ -102,7 +102,7 @@ jobs:
               "commit": "${{ github.sha }}"
             }'
 
-  signal:
+  signal-generation:
     runs-on: ubuntu-latest
     continue-on-error: true
     timeout-minutes: 15
