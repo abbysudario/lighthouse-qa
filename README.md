@@ -4,7 +4,9 @@ Lighthouse is a QA intelligence system that surfaces blindspots and suggests int
 
 Tests produce truth. Lighthouse produces clarity.
 
-> ✅ Core system complete — AI-assisted QA intelligence, multi-provider support, full CI pipeline, Allure dashboard reporting.
+> ✅ Complete — AI-assisted QA intelligence, multi-provider support, full CI pipeline, Allure dashboard with live hosted results.
+
+🔦 **Live Dashboard:** https://abbysudario.github.io/lighthouse-qa/
 
 ---
 
@@ -63,27 +65,38 @@ cp .env.example .env
 # add your credentials to .env
 ```
 
-Run the tests, analyze the results, view the reports:
+Run the full pipeline in one command:
+```bash
+npm run test:full
+```
+
+`test:full` clears `allure-results/` and `allure-report/` before every run to prevent phantom results from accumulating across runs. Playwright appends result files on every run — without this cleanup, Allure would read stale files alongside fresh ones and produce duplicate or misleading results.
+
+Or step by step:
 ```bash
 npm test
 npm run analyze
 npm run ai-analyze
-npm run test:report
 npm run allure:generate
 npm run allure:open
-```
-
-Or run the full pipeline in one command:
-```bash
-npm run test:full
 ```
 
 In Docker:
 ```bash
 docker compose build
-docker compose run --rm lighthouse-qa
-npm run allure:open
+docker compose run --rm lighthouse-qa   # runs full pipeline inside container
+npm run allure:open                      # view dashboard on your machine
 ```
+
+Docker mounts four volumes so generated files come back to your machine after the container exits:
+```
+./reports           → signal report and AI insights
+./playwright-report → Playwright HTML report
+./allure-results    → raw Allure result files
+./allure-report     → generated Allure dashboard
+```
+
+Without volumes, all generated output would disappear when the container exits.
 
 ---
 
@@ -103,6 +116,8 @@ workflow_dispatch input → github.event.inputs.flake_mode
 ```
 
 Enable locally by setting `FLAKE_MODE=true` in `.env`. Enable in CI via GitHub Actions → Lighthouse CI → Run workflow → set `flake_mode` to `true`.
+
+FLAKE_MODE runs stability tests 5 times in a loop within a single test — it is not the same as Playwright retries. Retries happen when a test fails and Playwright reruns it automatically. FLAKE_MODE proactively stress-tests stability before failure ever occurs.
 
 ---
 
@@ -184,24 +199,47 @@ const provider = process.env.AI_PROVIDER ?? 'mistral'; // change 'mistral' to yo
 
 After every run, Lighthouse generates a visual test dashboard via Allure. It shows pass/fail status, test duration, flaky test detection, and results grouped by spec file.
 
+The dashboard is automatically deployed to GitHub Pages on every CI run:
+
+🔦 **https://abbysudario.github.io/lighthouse-qa/**
+
 Generate and view locally:
 ```bash
 npm run allure:generate
 npm run allure:open
 ```
 
-The dashboard is also generated automatically in CI and uploaded as the `dashboard-allure` artifact on every run.
+**How Playwright connects to Allure:**
+
+`allure-playwright` is the bridge. It listens to Playwright's reporter API and translates each test result into Allure's JSON format, writing one file per test into `allure-results/`. The Allure CLI then reads those files and generates the dashboard. This is why Allure works with any test framework — each has its own translator package but they all produce the same Allure JSON format.
+
+**Why the downloaded artifact doesn't open by double-clicking:**
+
+Allure generates a single-page application (SPA). SPAs require a web server to function — the browser blocks JavaScript from loading local resources when opened as a file due to security restrictions. This is why `npm run allure:open` starts a local server rather than just opening the file directly. The GitHub Pages hosted version has no this limitation — it's served over HTTP automatically.
+
+**Retry display behavior:**
+
+Playwright retries are enabled in CI (`retries: 1`) but disabled locally and in Docker (`retries: 0`). Docker sets `DOCKER=true` as an environment variable, which `playwright.config.ts` uses to override the retry behavior:
+```typescript
+retries: process.env.CI === 'true' && !process.env.DOCKER ? 1 : 0,
+```
+
+This prevents Allure from showing a misleading "Retried tests" column when running in Docker, since all tests pass on the first attempt and no actual retries occur.
 
 ---
 
 ⚙️ **CI**
 
-Every push and PR triggers the full pipeline: tests, quality signal report, AI insights, Allure dashboard, artifact upload. A manual `workflow_dispatch` trigger is available with an optional `flake_mode` input for on-demand flake detection runs.
+Every push and PR triggers the full pipeline: tests, quality signal report, AI insights, Allure dashboard generation, and deployment to GitHub Pages. A manual `workflow_dispatch` trigger is available with an optional `flake_mode` input for on-demand flake detection runs.
 
 CI uploads three artifacts on every run:
-- `dashboard-allure` — visual Allure test dashboard
+- `dashboard-allure` — visual Allure test dashboard (also live at the GitHub Pages URL)
 - `dashboard-playwright` — Playwright HTML report
 - `quality-signals` — signal report, AI insights, raw results JSON
+
+GitHub Pages deployment is handled by `peaceiris/actions-gh-pages@v3` — it pushes the generated `allure-report/` folder to the `gh-pages` branch after every run, which GitHub Pages serves automatically as a static site.
+
+GitHub Actions permissions are scoped at the job level — only the specific job that deploys to GitHub Pages has write access. The rest of the pipeline runs with read-only permissions. This is more secure than granting broad read/write access at the repository level.
 
 ---
 
@@ -216,4 +254,4 @@ CI uploads three artifacts on every run:
 | 3 | AI analysis: failure explanation, release readiness | ✅ |
 | 3.5 | Multi-provider support: Mistral, Ollama, Anthropic | ✅ |
 | 4 | Dashboard reporting with Allure | ✅ |
-| 5 | GitHub Pages — live hosted Allure dashboard | ⬜ |
+| 5 | GitHub Pages — live hosted Allure dashboard | ✅ |
