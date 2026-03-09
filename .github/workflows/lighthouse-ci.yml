@@ -45,17 +45,17 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: allure-report
+          name: dashboard-allure
           path: allure-report/
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          name: dashboard-playwright
           path: playwright-report/
       - name: Upload results and summary
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: results
+          name: quality-signals
           path: reports/

@@ -3,7 +3,7 @@ import { defineConfig } from '@playwright/test';
 export default defineConfig({
   testDir: './playwright/tests',
   globalSetup: './playwright/global-setup.ts',
-  retries: process.env.CI ? 1 : 0,
+  retries: process.env.CI === 'true' && !process.env.DOCKER ? 1 : 0,
   reporter: [
     ['html'],
     ['json', { outputFile: 'reports/playwright-results.json' }],

@@ -4,9 +4,7 @@ Lighthouse is a QA intelligence system that surfaces blindspots and suggests int
 
 Tests produce truth. Lighthouse produces clarity.
 
-> ✅ Core system complete — AI-assisted QA intelligence, multi-provider support, full CI pipeline.
-
-🔄 Milestone 4 in progress — dashboard reporting with Allure.
+> ✅ Core system complete — AI-assisted QA intelligence, multi-provider support, full CI pipeline, Allure dashboard reporting.
 
 ---
 
@@ -43,6 +41,8 @@ lighthouse-qa/
 │  ├─ analyze.ts                 # quality signal analyzer
 │  └─ ai-analyze.ts              # AI insights engine
 ├─ reports/                      # generated, gitignored
+├─ allure-results/               # generated, gitignored
+├─ allure-report/                # generated, gitignored
 ├─ playwright.config.ts
 ├─ tsconfig.json
 ├─ Dockerfile
@@ -63,20 +63,26 @@ cp .env.example .env
 # add your credentials to .env
 ```
 
-Run the tests, analyze the results, view the report:
+Run the tests, analyze the results, view the reports:
 ```bash
 npm test
 npm run analyze
 npm run ai-analyze
 npm run test:report
+npm run allure:generate
+npm run allure:open
+```
+
+Or run the full pipeline in one command:
+```bash
+npm run test:full
 ```
 
 In Docker:
 ```bash
 docker compose build
-docker compose run --rm lighthouse-qa npx playwright test
-docker compose run --rm lighthouse-qa npm run analyze
-docker compose run --rm lighthouse-qa npm run ai-analyze
+docker compose run --rm lighthouse-qa
+npm run allure:open
 ```
 
 ---
@@ -174,9 +180,28 @@ const provider = process.env.AI_PROVIDER ?? 'mistral'; // change 'mistral' to yo
 
 ---
 
+📈 **Allure dashboard**
+
+After every run, Lighthouse generates a visual test dashboard via Allure. It shows pass/fail status, test duration, flaky test detection, and results grouped by spec file.
+
+Generate and view locally:
+```bash
+npm run allure:generate
+npm run allure:open
+```
+
+The dashboard is also generated automatically in CI and uploaded as the `dashboard-allure` artifact on every run.
+
+---
+
 ⚙️ **CI**
 
-Every push and PR triggers the full pipeline: tests, quality signal report, AI insights, artifact upload. A manual `workflow_dispatch` trigger is available with an optional `flake_mode` input for on-demand flake detection runs.
+Every push and PR triggers the full pipeline: tests, quality signal report, AI insights, Allure dashboard, artifact upload. A manual `workflow_dispatch` trigger is available with an optional `flake_mode` input for on-demand flake detection runs.
+
+CI uploads three artifacts on every run:
+- `dashboard-allure` — visual Allure test dashboard
+- `dashboard-playwright` — Playwright HTML report
+- `quality-signals` — signal report, AI insights, raw results JSON
 
 ---
 
@@ -190,4 +215,5 @@ Every push and PR triggers the full pipeline: tests, quality signal report, AI i
 | 2.5 | Page Object Model | ✅ |
 | 3 | AI analysis: failure explanation, release readiness | ✅ |
 | 3.5 | Multi-provider support: Mistral, Ollama, Anthropic | ✅ |
-| 4 | Dashboard reporting with Allure | ⬜ |
+| 4 | Dashboard reporting with Allure | ✅ |
+| 5 | GitHub Pages — live hosted Allure dashboard | ⬜ |

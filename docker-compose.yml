@@ -7,6 +7,10 @@ services:
       SAUCE_USERNAME: ${SAUCE_USERNAME}
       SAUCE_PASSWORD: ${SAUCE_PASSWORD}
       FLAKE_MODE: ${FLAKE_MODE:-false}
+      DOCKER: "true"
     volumes:
       - ./reports:/app/reports
       - ./playwright-report:/app/playwright-report
+      - ./allure-results:/app/allure-results
+      - ./allure-report:/app/allure-report
+    command: npm run test:full
