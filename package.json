@@ -13,7 +13,7 @@
     "ai-analyze": "ts-node scripts/ai-analyze.ts",
 	"allure:generate": "npx allure awesome --output allure-report allure-results",
 	"allure:open": "npx allure open allure-report",
-	"test:full": "rm -rf allure-results/* allure-report/* ; npm test && npm run analyze && npm run ai-analyze && npm run allure:generate"
+	"test:full": "rm -rf allure-results/* allure-report/* ; npm test ; npm run analyze ; npm run ai-analyze ; npm run allure:generate"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",
