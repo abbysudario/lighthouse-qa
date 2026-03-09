@@ -5,7 +5,7 @@ export default defineConfig({
   globalSetup: './playwright/global-setup.ts',
   retries: process.env.CI === 'true' && !process.env.DOCKER ? 1 : 0,
   reporter: [
-    ['html'],
+    ['html', { open: 'never' }],
     ['json', { outputFile: 'reports/playwright-results.json' }],
     ['allure-playwright', { outputFolder: 'allure-results' }],
   ],
