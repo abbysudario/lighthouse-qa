@@ -4,7 +4,7 @@ Lighthouse is a QA intelligence system that surfaces blindspots and suggests int
 
 Tests produce truth. Lighthouse produces clarity.
 
-> ✅ Complete: AI-assisted QA intelligence, multi-provider support, full CI pipeline, Allure dashboard with live hosted results.
+> ✅ Complete: AI-assisted QA intelligence, multi-provider support, full CI pipeline, Allure dashboard with live hosted results, and signal generation for QA Signal Hub.
 
 🔦 **Live Dashboard:** https://abbysudario.github.io/lighthouse-qa/
 
@@ -26,7 +26,7 @@ TypeScript, Playwright, Docker, GitHub Actions, ts-node, dotenv. Targets [SauceD
 ```
 lighthouse-qa/
 ├─ playwright/
-│  ├─ global-setup.ts            # env validation, FLAKE_MODE config
+│  ├─ global-setup.ts            # env validation, FLAKE_MODE and SIGNAL_MODE config
 │  ├─ pages/                     # page object model
 │  │  ├─ LoginPage.ts
 │  │  ├─ InventoryPage.ts
@@ -38,7 +38,8 @@ lighthouse-qa/
 │     ├─ smoke.spec.ts           # is the app alive?
 │     ├─ checkout.spec.ts        # does the core flow work?
 │     ├─ negative.spec.ts        # does it fail gracefully?
-│     └─ stability.spec.ts       # can we trust it consistently?
+│     ├─ stability.spec.ts       # can we trust it consistently?
+│     └─ signal.spec.ts          # deliberate signal fixtures for QA Signal Hub
 ├─ scripts/
 │  ├─ analyze.ts                 # quality signal analyzer
 │  └─ ai-analyze.ts              # AI insights engine
@@ -56,21 +57,51 @@ lighthouse-qa/
 ---
 
 ▶️ **Running it**
+
+**1. Clone and install**
 ```bash
 git clone https://github.com/abbysudario/lighthouse-qa.git
 cd lighthouse-qa
 npm install
 npx playwright install --with-deps
-cp .env.example .env
-# add your credentials to .env
 ```
 
-Run the full pipeline in one command:
+**2. Set up credentials**
+```bash
+cp .env.example .env
+# open .env and fill in:
+# SAUCE_USERNAME=standard_user
+# SAUCE_PASSWORD=secret_sauce
+# these are the public SauceDemo credentials — safe to use directly
+```
+
+**3. Verify tests run**
+```bash
+npx playwright test
+```
+
+All 9 core tests should pass before proceeding.
+
+**4. Set up AI insights**
+
+Open `.env` and add your Mistral API key. Get a free key at [console.mistral.ai](https://console.mistral.ai) — no credit card required.
+```
+MISTRAL_API_KEY=your_key_here
+```
+
+**5. Run the full pipeline**
 ```bash
 npm run test:full
 ```
 
-`test:full` clears `allure-results/` and `allure-report/` before every run to prevent phantom results from accumulating across runs. Playwright appends result files on every run. Without this cleanup, Allure would read stale files alongside fresh ones and produce duplicate or misleading results.
+`test:full` clears `allure-results/` and `allure-report/` before every run to prevent phantom results from accumulating across runs. Playwright appends result files on every run. Without this cleanup, Allure would read stale files alongside fresh ones and produce duplicate or misleading results. Each command in the pipeline runs sequentially using `;` so the full pipeline completes even when tests fail intentionally.
+
+**6. Run with additional modes**
+```bash
+npm run test:full:signals      # includes deliberate signal fixtures for QA Signal Hub
+npm run test:full:flake        # runs stability tests 5x for flake detection
+npm run test:full:flake-signal # both signal fixtures and flake detection
+```
 
 Or step by step:
 ```bash
@@ -84,16 +115,19 @@ npm run allure:open
 In Docker:
 ```bash
 docker compose build
-docker compose run --rm lighthouse-qa   # runs full pipeline inside container
-npm run allure:open                      # view dashboard on your machine
+docker compose run --rm lighthouse-qa                                    # clean run
+SIGNAL_MODE=true docker compose run --rm lighthouse-qa                   # with signal fixtures
+FLAKE_MODE=true docker compose run --rm lighthouse-qa                    # with flake detection
+FLAKE_MODE=true SIGNAL_MODE=true docker compose run --rm lighthouse-qa   # both
+npm run allure:open                                                        # view dashboard on your machine
 ```
 
 Docker mounts four volumes so generated files come back to your machine after the container exits:
 ```
-./reports           → signal report and AI insights
-./playwright-report → Playwright HTML report
-./allure-results    → raw Allure result files
-./allure-report     → generated Allure dashboard
+./reports           -> signal report and AI insights
+./playwright-report -> Playwright HTML report
+./allure-results    -> raw Allure result files
+./allure-report     -> generated Allure dashboard
 ```
 
 Without volumes, all generated output would disappear when the container exits.
@@ -104,20 +138,48 @@ Without volumes, all generated output would disappear when the container exits.
 
 Stability tests can run up to 5 iterations to surface flakiness before it hits production. The mode flows through the entire system from CI input all the way to test execution:
 ```
-workflow_dispatch input → github.event.inputs.flake_mode
-                       ↓
+workflow_dispatch input -> github.event.inputs.flake_mode
+                       |
         || 'false' fallback for push/PR triggers
-                       ↓
+                       |
               FLAKE_MODE env variable
-                       ↓
+                       |
          global-setup.ts reads and validates it
-                       ↓
+                       |
          stability.spec.ts uses ITERATIONS = 1 or 5
 ```
 
-Enable locally by setting `FLAKE_MODE=true` in `.env`. Enable in CI via GitHub Actions → Lighthouse CI → Run workflow → set `flake_mode` to `true`.
+Enable locally by setting `FLAKE_MODE=true` in `.env` or using `npm run test:full:flake`. Enable in CI via GitHub Actions -> Lighthouse CI -> Run workflow -> set `flake_mode` to `true`.
 
 FLAKE_MODE runs stability tests 5 times in a loop within a single test. It is not the same as Playwright retries. Retries happen when a test fails and Playwright reruns it automatically. FLAKE_MODE proactively stress-tests stability before failure ever occurs.
+
+---
+
+📡 **SIGNAL_MODE**
+
+Signal mode controls whether deliberate signal fixtures in `signal.spec.ts` are included in the test run. It defaults to `false` so CI stays green on every push. Set it to `true` when you want to generate classifiable failure signals for [QA Signal Hub](https://github.com/abbysudario/qa-signal-hub).
+
+```
+workflow_dispatch input -> github.event.inputs.signal_mode
+                       |
+        || 'false' fallback for push/PR triggers
+                       |
+              SIGNAL_MODE env variable
+                       |
+         global-setup.ts reads and validates it
+                       |
+         playwright.config.ts uses grep to include or exclude Signal Generation tests
+```
+
+The filtering happens in `playwright.config.ts` via a `grep` regex, not a CLI flag. This means the same logic applies identically across local, Docker, and CI without any script changes:
+
+```typescript
+grep: signalMode ? undefined : /^(?!.*Signal Generation)/,
+```
+
+When `SIGNAL_MODE=false`, the negative lookahead regex excludes any test whose title contains "Signal Generation". When `SIGNAL_MODE=true`, grep is undefined and every test runs.
+
+Enable locally by setting `SIGNAL_MODE=true` in `.env` or using `npm run test:full:signals`. Enable in CI via GitHub Actions -> Lighthouse CI -> Run workflow -> set `signal_mode` to `true`. Note: enabling signal mode will cause a failed CI run by design.
 
 ---
 
@@ -128,18 +190,18 @@ After every run, Lighthouse parses the raw Playwright output and produces a huma
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   🔦 Lighthouse — Quality Signal Report
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Run Date:        3/6/2026, 3:27:06 PM
-  Total Duration:  5.62s
-  Total Tests:     9
+  Run Date:        3/9/2026, 4:20:27 PM
+  Total Duration:  17.45s
+  Total Tests:     12
   Passed:          9
-  Failed:          0
+  Failed:          3
   Flaky:           0
   Skipped:         0
-  Stability Score: 100%
+  Stability Score: 75%
   Slowest Tests:
-  → checkout.spec.ts › completes a full purchase as standard_user (1847ms)
-  → smoke.spec.ts › standard_user can login and land on Products (1718ms)
-  → stability.spec.ts › login and inventory load consistently (1717ms)
+  -> signal.spec.ts › REGRESSION: wrong product title assertion (6873ms)
+  -> signal.spec.ts › FLAKY: deterministic retry-based flakiness (5974ms)
+  -> checkout.spec.ts › completes a full purchase as standard_user (1763ms)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -226,9 +288,31 @@ This prevents Allure from showing a misleading "Retried tests" column when runni
 
 ---
 
+📡 **Signal generation**
+
+`signal.spec.ts` contains three deliberately failing tests that exist to generate classifiable signal for [QA Signal Hub](https://github.com/abbysudario/qa-signal-hub). These are not bugs. They are permanent, intentional fixtures. They are excluded from normal runs and only execute when `SIGNAL_MODE=true`.
+
+Each test represents a distinct failure classification that QA Signal Hub routes differently:
+
+**REGRESSION** always fails. It asserts an incorrect product name against the live UI. This simulates a real regression where a test expectation no longer matches application behavior. QA Signal Hub creates a GitHub Issue when this signal is received.
+
+**FLAKY** fails on the first attempt and passes on retry. It uses `testInfo.retry` to make the behavior deterministic. On the first attempt (`testInfo.retry === 0`) it asserts a value that does not exist on the page. On retry (`testInfo.retry === 1`) it asserts the correct value and passes. Playwright detects the fail-then-pass pattern and marks the test `flaky: true` in CI where retries are enabled. Locally retries are disabled so it simply fails. QA Signal Hub tracks flaky signals over time rather than creating an immediate GitHub Issue.
+
+**ENVIRONMENT** always fails. It attempts to navigate to a non-existent host, producing `ERR_NAME_NOT_RESOLVED`. This simulates an infrastructure failure where a dependent service is unreachable. QA Signal Hub creates a GitHub Issue when this signal is received.
+
+Why `testInfo.retry` instead of `Math.random()` for flakiness: `Math.random()` produces genuinely random behavior that may never trigger the fail-then-pass pattern Playwright needs to classify a test as flaky. `testInfo.retry` is deterministic. It guarantees the pattern on every CI run, which produces accurate `flaky: true` classification in the report every time.
+
+---
+
 ⚙️ **CI**
 
-Every push and PR triggers the full pipeline: tests, quality signal report, AI insights, Allure dashboard generation, and deployment to GitHub Pages. A manual `workflow_dispatch` trigger is available with an optional `flake_mode` input for on-demand flake detection runs.
+Every push and PR triggers the full pipeline: tests, quality signal report, AI insights, Allure dashboard generation, and deployment to GitHub Pages. Signal fixtures are excluded by default so CI stays green on every push.
+
+Two manual `workflow_dispatch` inputs are available:
+
+**`flake_mode`** — set to `true` to run stability tests 5 times for flake detection. Defaults to `false`.
+
+**`signal_mode`** — set to `true` to include signal fixtures and generate classifiable failures for QA Signal Hub. Defaults to `false`. Will cause a failed CI run by design.
 
 CI uploads three artifacts on every run:
 - `dashboard-allure` — visual Allure test dashboard (also live at the GitHub Pages URL)
@@ -252,4 +336,5 @@ GitHub Actions permissions are scoped at the job level. Only the specific job th
 | 3 | AI analysis: failure explanation, release readiness | ✅ |
 | 3.5 | Multi-provider support: Mistral, Ollama, Anthropic | ✅ |
 | 4 | Dashboard reporting with Allure | ✅ |
-| 5 | GitHub Pages — live hosted Allure dashboard | ✅ |
+| 5 | GitHub Pages - live hosted Allure dashboard | ✅ |
+| 6 | Signal generation: deliberate fixtures for QA Signal Hub | ✅ |
