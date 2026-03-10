@@ -9,9 +9,13 @@ on:
         description: 'Enable flake detection mode (runs stability tests 5x)'
         required: false
         default: 'false'
+      signal_mode:
+      description: 'Enable signal mode (includes deliberate signal fixtures for QA Signal Hub — will cause a failed CI run)'
+      required: false
+      default: 'false'
 
 jobs:
-  core-tests:
+  lighthouse:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -20,6 +24,7 @@ jobs:
       SAUCE_USERNAME: ${{ secrets.SAUCE_USERNAME }}
       SAUCE_PASSWORD: ${{ secrets.SAUCE_PASSWORD }}
       FLAKE_MODE: ${{ github.event.inputs.flake_mode || 'false' }}
+      SIGNAL_MODE: ${{ github.event.inputs.signal_mode || 'false' }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
       AI_PROVIDER: mistral
@@ -40,7 +45,7 @@ jobs:
         run: npx playwright install --with-deps
 
       - name: Run tests
-        run: npx playwright test --grep-invert "Signal Generation"
+        run: npx playwright test
 
       - name: Generate quality signal report
         if: always()
@@ -75,6 +80,8 @@ jobs:
           echo "## 🔦 Lighthouse Report" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Live Dashboard:** https://abbysudario.github.io/lighthouse-qa/" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Signal Mode:** $SIGNAL_MODE" >> $GITHUB_STEP_SUMMARY
 
       - name: Upload Playwright report
         if: always()
@@ -97,48 +104,7 @@ jobs:
             -H "Content-Type: application/json" \
             -d '{
               "status": "${{ job.status }}",
-              "run_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}",
-              "branch": "${{ github.ref_name }}",
-              "commit": "${{ github.sha }}"
-            }'
-
-  signal-generation:
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    timeout-minutes: 15
-    env:
-      SAUCE_USERNAME: ${{ secrets.SAUCE_USERNAME }}
-      SAUCE_PASSWORD: ${{ secrets.SAUCE_PASSWORD }}
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-      MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
-      AI_PROVIDER: mistral
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps
-
-      - name: Run signal generation tests
-        run: npx playwright test playwright/tests/signal.spec.ts
-
-      - name: Notify QA Signal Hub
-        if: always()
-        run: |
-          curl -X POST ${{ secrets.N8N_WEBHOOK_URL }} \
-            -H "Content-Type: application/json" \
-            -d '{
-              "status": "${{ job.status }}",
-              "job": "signal",
+              "signal_mode": "${{ github.event.inputs.signal_mode || 'false' }}",
               "run_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}",
               "branch": "${{ github.ref_name }}",
               "commit": "${{ github.sha }}"
