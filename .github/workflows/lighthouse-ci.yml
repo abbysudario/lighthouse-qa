@@ -10,9 +10,9 @@ on:
         required: false
         default: 'false'
       signal_mode:
-      description: 'Enable signal mode (includes deliberate signal fixtures for QA Signal Hub — will cause a failed CI run)'
-      required: false
-      default: 'false'
+        description: 'Enable signal mode (includes deliberate signal fixtures for QA Signal Hub - will cause a failed CI run)'
+        required: false
+        default: 'false'
 
 jobs:
   lighthouse:
@@ -102,10 +102,10 @@ jobs:
         run: |
           curl -X POST ${{ secrets.N8N_WEBHOOK_URL }} \
             -H "Content-Type: application/json" \
-            -d '{
-              "status": "${{ job.status }}",
-              "signal_mode": "${{ github.event.inputs.signal_mode || 'false' }}",
-              "run_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}",
-              "branch": "${{ github.ref_name }}",
-              "commit": "${{ github.sha }}"
-            }'
+            -d "{
+              \"status\": \"${{ job.status }}\",
+              \"signal_mode\": \"${{ github.event.inputs.signal_mode || 'false' }}\",
+              \"run_url\": \"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\",
+              \"branch\": \"${{ github.ref_name }}\",
+              \"commit\": \"${{ github.sha }}\"
+            }"
