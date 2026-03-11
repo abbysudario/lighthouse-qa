@@ -15,7 +15,7 @@ import { InventoryPage } from '../pages/InventoryPage';
  */
 
 test.describe('Signal Generation', () => {
-  test('REGRESSION: wrong product title assertion', async ({ page }) => {
+  test('wrong product title assertion', async ({ page }) => {
     // Intentional failure: asserts an incorrect product name
     // Expected to always fail — simulates a regression signal
     const loginPage = new LoginPage(page);
@@ -29,7 +29,7 @@ test.describe('Signal Generation', () => {
     );
   });
 
-  test('FLAKY: deterministic retry-based flakiness', async ({ page }, testInfo) => {
+  test('inconsistent inventory item rendering', async ({ page }, testInfo) => {
     // Intentional flaky behavior: fails on first attempt, passes on retry
     // Uses testInfo.retry to guarantee Playwright marks this as "flaky: true"
     // Requires retries to be enabled — active in CI via playwright.config.ts
@@ -46,7 +46,7 @@ test.describe('Signal Generation', () => {
     );
   });
 
-  test('ENVIRONMENT: unreachable external resource', async ({ page }) => {
+  test('unreachable external resource', async ({ page }) => {
     // Intentional environment failure: navigates to a non-existent host
     // Expected to always fail — simulates an infrastructure/environment signal
     await page.goto('https://this-environment-does-not-exist.internal', {
