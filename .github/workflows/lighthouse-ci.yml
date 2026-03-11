@@ -55,16 +55,6 @@ jobs:
         if: always()
         run: npm run ai-analyze
 
-      - name: Download Allure history
-        if: always()
-        run: |
-          # Suppression is intentional. gh-pages and history/ may not exist on first run.
-          # That is expected state, not a failure. After run one this always succeeds.
-          git fetch origin gh-pages --depth=1 2>/dev/null || true
-          git checkout origin/gh-pages -- history 2>/dev/null || true
-          mkdir -p allure-results/history
-          cp -r history/. allure-results/history/ 2>/dev/null || true
-
       - name: Generate Allure report
         if: always()
         run: npm run allure:generate
@@ -110,6 +100,8 @@ jobs:
       - name: Notify QA Signal Hub
         if: always()
         run: |
+          # ai-classification.json only exists when failures are present.
+          # Empty array is the correct default on a clean run.
           CLASSIFICATIONS=$(jq -c '.classifications // []' reports/ai-classification.json 2>/dev/null || echo '[]')
           curl -X POST ${{ secrets.N8N_WEBHOOK_URL }} \
             -H "Content-Type: application/json" \

@@ -323,6 +323,9 @@ Generate and view locally:
 npm run allure:generate
 npm run allure:open
 ```
+**Trend history limitation:**
+
+Lighthouse uses `allure-awesome` for its modern dashboard UI. `allure-awesome` compiles all test data into JavaScript bundles at build time, which means it does not produce a separate `history/` folder that can be persisted across CI runs. Trend graphs and status dynamics in the Graphs view require this folder and will show "No history information available." This is a known limitation of `allure-awesome` and not a pipeline misconfiguration. If cross-run trend tracking is a requirement, switching to the classic Allure CLI (`allure generate`) would restore that capability at the cost of a less modern UI.
 
 **How Playwright connects to Allure:**
 
