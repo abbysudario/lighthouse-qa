@@ -57,16 +57,13 @@ jobs:
 
       - name: Download Allure history
         if: always()
-        uses: actions/checkout@v4
-        with:
-          ref: gh-pages
-          path: gh-pages-branch
-          fetch-depth: 1
-      - name: Copy Allure history
-        if: always()
         run: |
+          # Suppression is intentional. gh-pages and history/ may not exist on first run.
+          # That is expected state, not a failure. After run one this always succeeds.
+          git fetch origin gh-pages --depth=1 2>/dev/null || true
+          git checkout origin/gh-pages -- history 2>/dev/null || true
           mkdir -p allure-results/history
-          cp -r gh-pages-branch/history/. allure-results/history/ 2>/dev/null || true
+          cp -r history/. allure-results/history/ 2>/dev/null || true
 
       - name: Generate Allure report
         if: always()
