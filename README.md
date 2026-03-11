@@ -8,6 +8,8 @@ Tests produce truth. Lighthouse produces clarity.
 
 🔦 **Live Dashboard:** https://abbysudario.github.io/lighthouse-qa/
 
+> 💡 Lighthouse is best used alongside [QA Signal Hub](https://github.com/abbysudario/qa-signal-hub), its companion event-driven signal routing system built with n8n. QA Signal Hub receives the webhook payload from Lighthouse CI, classifies failures using AI, and automatically creates labeled GitHub Issues for actionable follow-up.
+
 ---
 
 Lighthouse sits on top of your test suite as a signal layer. It observes, interprets, and warns. It doesn't replace tests. It gives them a voice. Most QA systems answer "did it pass?" Lighthouse asks the harder questions: which tests are unreliable, what's slowing the pipeline down, and is this build actually safe to ship?
@@ -42,7 +44,7 @@ lighthouse-qa/
 │     └─ signal.spec.ts          # deliberate signal fixtures for QA Signal Hub
 ├─ scripts/
 │  ├─ analyze.ts                 # quality signal analyzer
-│  └─ ai-analyze.ts              # AI insights engine
+│  └─ ai-analyze.ts              # AI insights and classification engine
 ├─ reports/                      # generated, gitignored
 ├─ allure-results/               # generated, gitignored
 ├─ allure-report/                # generated, gitignored
@@ -190,7 +192,7 @@ After every run, Lighthouse parses the raw Playwright output and produces a huma
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   🔦 Lighthouse — Quality Signal Report
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Run Date:        3/9/2026, 4:20:27 PM
+  Run Date:        3/11/2026, 11:22:14 AM
   Total Duration:  17.45s
   Total Tests:     12
   Passed:          9
@@ -199,8 +201,8 @@ After every run, Lighthouse parses the raw Playwright output and produces a huma
   Skipped:         0
   Stability Score: 75%
   Slowest Tests:
-  -> signal.spec.ts › REGRESSION: wrong product title assertion (6873ms)
-  -> signal.spec.ts › FLAKY: deterministic retry-based flakiness (5974ms)
+  -> signal.spec.ts › wrong product title assertion (6873ms)
+  -> signal.spec.ts › inconsistent inventory item rendering (5974ms)
   -> checkout.spec.ts › completes a full purchase as standard_user (1763ms)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
@@ -209,7 +211,17 @@ After every run, Lighthouse parses the raw Playwright output and produces a huma
 
 🤖 **AI insights**
 
-After the signal report runs, Lighthouse feeds the results into an AI layer that produces three things: a failure analysis, a release readiness verdict, and specific coverage gap suggestions.
+After the signal report runs, Lighthouse feeds the results into an AI layer that produces three things: a failure analysis, a release readiness verdict, and specific coverage gap suggestions. The results are written to `reports/ai-insights.json`.
+
+When failures are present, Lighthouse makes a second AI call to classify each failure into a structured format. The classification is written to `reports/ai-classification.json` and included in the CI webhook payload sent to QA Signal Hub.
+
+Each classification contains the test name, file, failure type, confidence level, and a clean one-line error summary. The AI classifies purely from the error message and stack trace evidence, not from the test name. This ensures the classification is honest and based on observable failure patterns rather than labels.
+
+The two output files serve different audiences:
+- `ai-insights.json` — human-readable analysis for the terminal and Allure dashboard
+- `ai-classification.json` — machine-readable structured data for QA Signal Hub to route and act on
+
+The second AI call only fires when failures are present. Clean runs make exactly one AI call and skip classification entirely.
 
 The AI layer is provider-agnostic. Mistral is the default. It is free, requires no credit card, and works both locally and in CI out of the box. Anyone who forks Lighthouse can run it immediately without any billing setup. Set `AI_PROVIDER` in your `.env` to choose a different provider:
 
@@ -292,13 +304,15 @@ This prevents Allure from showing a misleading "Retried tests" column when runni
 
 `signal.spec.ts` contains three deliberately failing tests that exist to generate classifiable signal for [QA Signal Hub](https://github.com/abbysudario/qa-signal-hub). These are not bugs. They are permanent, intentional fixtures. They are excluded from normal runs and only execute when `SIGNAL_MODE=true`.
 
+Test names are intentionally clean and free of classification labels. The AI classifies each failure purely from the error message and stack trace evidence. This keeps the classification honest and based on observable failure patterns rather than hints embedded in the test name.
+
 Each test represents a distinct failure classification that QA Signal Hub routes differently:
 
-**REGRESSION** always fails. It asserts an incorrect product name against the live UI. This simulates a real regression where a test expectation no longer matches application behavior. QA Signal Hub creates a GitHub Issue when this signal is received.
+**`wrong product title assertion`** always fails. It asserts an incorrect product name against the live UI. This simulates a real regression where a test expectation no longer matches application behavior. QA Signal Hub classifies this as REGRESSION and creates a GitHub Issue labeled `regression`.
 
-**FLAKY** fails on the first attempt and passes on retry. It uses `testInfo.retry` to make the behavior deterministic. On the first attempt (`testInfo.retry === 0`) it asserts a value that does not exist on the page. On retry (`testInfo.retry === 1`) it asserts the correct value and passes. Playwright detects the fail-then-pass pattern and marks the test `flaky: true` in CI where retries are enabled. Locally retries are disabled so it simply fails. QA Signal Hub tracks flaky signals over time rather than creating an immediate GitHub Issue.
+**`inconsistent inventory item rendering`** fails on the first attempt and passes on retry. It uses `testInfo.retry` to make the behavior deterministic. On the first attempt (`testInfo.retry === 0`) it asserts a value that does not exist on the page. On retry (`testInfo.retry === 1`) it asserts the correct value and passes. Playwright detects the fail-then-pass pattern and marks the test `flaky: true` in CI where retries are enabled. Locally retries are disabled so it simply fails. QA Signal Hub classifies this as FLAKY and creates a GitHub Issue labeled `flaky`.
 
-**ENVIRONMENT** always fails. It attempts to navigate to a non-existent host, producing `ERR_NAME_NOT_RESOLVED`. This simulates an infrastructure failure where a dependent service is unreachable. QA Signal Hub creates a GitHub Issue when this signal is received.
+**`unreachable external resource`** always fails. It attempts to navigate to a non-existent host, producing `ERR_NAME_NOT_RESOLVED`. This simulates an infrastructure failure where a dependent service is unreachable. QA Signal Hub classifies this as ENVIRONMENT and creates a GitHub Issue labeled `environment`.
 
 Why `testInfo.retry` instead of `Math.random()` for flakiness: `Math.random()` produces genuinely random behavior that may never trigger the fail-then-pass pattern Playwright needs to classify a test as flaky. `testInfo.retry` is deterministic. It guarantees the pattern on every CI run, which produces accurate `flaky: true` classification in the report every time.
 
@@ -314,10 +328,12 @@ Two manual `workflow_dispatch` inputs are available:
 
 **`signal_mode`** — set to `true` to include signal fixtures and generate classifiable failures for QA Signal Hub. Defaults to `false`. Will cause a failed CI run by design.
 
+After tests run, the CI webhook payload is sent to QA Signal Hub. The payload includes the job status, branch, commit, run URL, and the full `classifications` array from `ai-classification.json`. If no failures occurred, `classifications` is an empty array. QA Signal Hub reads this payload and routes each classification to the appropriate action.
+
 CI uploads three artifacts on every run:
 - `dashboard-allure` — visual Allure test dashboard (also live at the GitHub Pages URL)
 - `dashboard-playwright` — Playwright HTML report
-- `quality-signals` — signal report, AI insights, raw results JSON
+- `quality-signals` — signal report, AI insights, AI classification, and raw results JSON
 
 GitHub Pages deployment is handled by `peaceiris/actions-gh-pages@v3`. It pushes the generated `allure-report/` folder to the `gh-pages` branch after every run, which GitHub Pages serves automatically as a static site.
 
@@ -336,5 +352,5 @@ GitHub Actions permissions are scoped at the job level. Only the specific job th
 | 3 | AI analysis: failure explanation, release readiness | ✅ |
 | 3.5 | Multi-provider support: Mistral, Ollama, Anthropic | ✅ |
 | 4 | Dashboard reporting with Allure | ✅ |
-| 5 | GitHub Pages - live hosted Allure dashboard | ✅ |
+| 5 | GitHub Pages: live hosted Allure dashboard | ✅ |
 | 6 | Signal generation: deliberate fixtures for QA Signal Hub | ✅ |
