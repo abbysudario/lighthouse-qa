@@ -24,6 +24,49 @@ TypeScript, Playwright, Docker, GitHub Actions, ts-node, dotenv. Targets [SauceD
 
 ---
 
+🏗️ **System architecture**
+
+The full pipeline from test execution to GitHub Issue creation across both repos:
+
+```
+SauceDemo (target application)
+        |
+        | Playwright tests run
+        v
+lighthouse-qa (this repo)
+        |
+        |-- analyze.ts
+        |       produces reports/summary.json
+        |
+        |-- ai-analyze.ts
+        |       first AI call:  reports/ai-insights.json  (human-readable analysis)
+        |       second AI call: reports/ai-classification.json  (machine-readable, failures only)
+        |
+        |-- Allure report generated and deployed to GitHub Pages
+        |
+        | webhook POST (status + branch + commit + run_url + classifications[])
+        v
+qa-signal-hub (companion repo)
+        |
+        |-- n8n receives payload
+        |
+        |-- Has Classifications? (IF node)
+        |       empty array -> exit cleanly
+        |
+        |-- Split Classifications (one item per classification)
+        |
+        |-- Route By Type (Switch node)
+        |       REGRESSION  -> Search Existing Issues -> deduplicate -> create GitHub Issue
+        |       ENVIRONMENT -> Search Existing Issues -> deduplicate -> create GitHub Issue
+        |       FLAKY       -> Search Existing Issues -> deduplicate -> create GitHub Issue
+        |       UNKNOWN     -> Search Existing Issues -> deduplicate -> create GitHub Issue
+        |
+        v
+GitHub Issues created in lighthouse-qa with labels
+```
+
+---
+
 🗂️ **Structure**
 ```
 lighthouse-qa/
@@ -74,7 +117,7 @@ cp .env.example .env
 # open .env and fill in:
 # SAUCE_USERNAME=standard_user
 # SAUCE_PASSWORD=secret_sauce
-# these are the public SauceDemo credentials — safe to use directly
+# these are the public SauceDemo credentials, safe to use directly
 ```
 
 **3. Verify tests run**
