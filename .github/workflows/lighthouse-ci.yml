@@ -100,6 +100,7 @@ jobs:
       - name: Notify QA Signal Hub
         if: always()
         run: |
+          CLASSIFICATIONS=$(jq -c '.classifications // []' reports/ai-classification.json 2>/dev/null || echo '[]')
           curl -X POST ${{ secrets.N8N_WEBHOOK_URL }} \
             -H "Content-Type: application/json" \
             -d "{
@@ -107,5 +108,6 @@ jobs:
               \"signal_mode\": \"${{ github.event.inputs.signal_mode || 'false' }}\",
               \"run_url\": \"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\",
               \"branch\": \"${{ github.ref_name }}\",
-              \"commit\": \"${{ github.sha }}\"
+              \"commit\": \"${{ github.sha }}\",
+              \"classifications\": $CLASSIFICATIONS
             }"
