@@ -55,6 +55,19 @@ jobs:
         if: always()
         run: npm run ai-analyze
 
+      - name: Download Allure history
+        if: always()
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: gh-pages-branch
+          fetch-depth: 1
+      - name: Copy Allure history
+        if: always()
+        run: |
+          mkdir -p allure-results/history
+          cp -r gh-pages-branch/history/. allure-results/history/ 2>/dev/null || true
+
       - name: Generate Allure report
         if: always()
         run: npm run allure:generate
