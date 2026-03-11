@@ -8,6 +8,34 @@ import * as path from 'path';
 
 const SUMMARY_PATH = path.resolve(__dirname, '../reports/summary.json');
 const OUTPUT_PATH = path.resolve(__dirname, '../reports/ai-insights.json');
+const CLASSIFICATION_PATH = path.resolve(__dirname, '../reports/ai-classification.json');
+
+interface TestResult {
+  name: string;
+  file: string;
+  status: string;
+  duration: number;
+  retries: number;
+  flaky: boolean;
+  errors: string[];
+}
+
+interface Summary {
+  tests: TestResult[];
+  [key: string]: unknown;
+}
+
+interface Classification {
+  test: string;
+  file: string;
+  type: 'REGRESSION' | 'ENVIRONMENT' | 'FLAKY' | 'UNKNOWN';
+  confidence: 'high' | 'medium' | 'low';
+  error: string;
+}
+
+function stripAnsi(str: string): string {
+  return str.replace(/\u001b\[[0-9;]*m/g, '');
+}
 
 function loadSummary(): string {
   if (!fs.existsSync(SUMMARY_PATH)) {
@@ -16,7 +44,7 @@ function loadSummary(): string {
   return fs.readFileSync(SUMMARY_PATH, 'utf-8');
 }
 
-function buildPrompt(summary: string): string {
+function buildInsightsPrompt(summary: string): string {
   return `You are a senior QA engineer reviewing automated test results for a web application.
 
 Here are the test results in JSON format:
@@ -35,6 +63,47 @@ Based on these results, is this build safe to ship? Give a clear verdict and bri
 Based on the test names and files, what important flows or edge cases are not currently being tested? Suggest 2-3 specific, actionable additions.
 
 Be concise, direct, and practical. Write for an engineering team, not a business audience.`;
+}
+
+function buildClassificationPrompt(failures: TestResult[]): string {
+  const failureData = failures.map(t => ({
+    test: t.name,
+    file: t.file,
+    flaky: t.flaky,
+    retries: t.retries,
+    errors: t.errors.map(stripAnsi),
+  }));
+
+  return `You are a QA classification engine. Classify each test failure based on the error message and failure pattern.
+
+Here are the failed tests:
+
+${JSON.stringify(failureData, null, 2)}
+
+Classification rules:
+- REGRESSION: assertion failure where expected value does not match received value — indicates the app behavior changed or the test expectation is wrong
+- ENVIRONMENT: network error, DNS resolution failure, connection refused, or unreachable host — indicates infrastructure or dependency issue
+- FLAKY: test has retries > 0 and flaky: true, or the error pattern suggests intermittent behavior
+- UNKNOWN: cannot determine from the available evidence
+
+Respond ONLY with a valid JSON array. No markdown, no explanation, no code fences. Each item must have:
+- test: string (test name)
+- file: string (spec file)
+- type: one of REGRESSION, ENVIRONMENT, FLAKY, UNKNOWN
+- confidence: one of high, medium, low
+- error: string (clean one-line summary of the error)
+
+Example:
+[{"test":"example test","file":"example.spec.ts","type":"REGRESSION","confidence":"high","error":"Expected 'X' but received 'Y'"}]`;
+}
+
+function parseClassifications(raw: string): Classification[] {
+  const cleaned = raw.replace(/```json|```/g, '').trim();
+  const parsed = JSON.parse(cleaned);
+  if (!Array.isArray(parsed)) {
+    throw new Error('Classification response is not an array');
+  }
+  return parsed as Classification[];
 }
 
 async function runWithAnthropic(prompt: string): Promise<string> {
@@ -111,6 +180,13 @@ async function runWithOllama(prompt: string): Promise<string> {
   return data.response;
 }
 
+async function runAI(prompt: string, provider: string): Promise<string> {
+  if (provider === 'anthropic') return runWithAnthropic(prompt);
+  if (provider === 'mistral') return runWithMistral(prompt);
+  if (provider === 'ollama') return runWithOllama(prompt);
+  throw new Error(`Unknown provider: ${provider}`);
+}
+
 async function runAIAnalysis(): Promise<void> {
   const provider = process.env.AI_PROVIDER ?? 'mistral';
 
@@ -120,20 +196,22 @@ async function runAIAnalysis(): Promise<void> {
   console.log(`  Provider: ${provider}`);
   console.log('  Analyzing test results...\n');
 
-  const summary = loadSummary();
-  const prompt = buildPrompt(summary);
+  const summaryRaw = loadSummary();
+  const summary: Summary = JSON.parse(summaryRaw);
+
+  const insightsPrompt = buildInsightsPrompt(summaryRaw);
 
   let responseText: string;
   let model: string;
 
   if (provider === 'anthropic') {
-    responseText = await runWithAnthropic(prompt);
+    responseText = await runWithAnthropic(insightsPrompt);
     model = 'claude-haiku-4-5-20251001';
   } else if (provider === 'mistral') {
-    responseText = await runWithMistral(prompt);
+    responseText = await runWithMistral(insightsPrompt);
     model = 'mistral-small-latest';
   } else if (provider === 'ollama') {
-    responseText = await runWithOllama(prompt);
+    responseText = await runWithOllama(insightsPrompt);
     model = 'llama3:instruct';
   } else {
     console.log(`\n  AI_PROVIDER '${provider}' is not currently configured in Lighthouse.`);
@@ -156,6 +234,38 @@ async function runAIAnalysis(): Promise<void> {
 
   fs.writeFileSync(OUTPUT_PATH, JSON.stringify(insights, null, 2));
   console.log('  Insights written to reports/ai-insights.json');
+
+  // Classification pass — only runs when there are failures
+  const failures = summary.tests.filter(t => t.status === 'failed' || t.flaky);
+
+  if (failures.length === 0) {
+    console.log('  No failures to classify.');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+    return;
+  }
+
+  console.log(`\n  Classifying ${failures.length} failure(s)...\n`);
+
+  const classificationPrompt = buildClassificationPrompt(failures);
+  const classificationRaw = await runAI(classificationPrompt, provider);
+
+  let classifications: Classification[] = [];
+  try {
+    classifications = parseClassifications(classificationRaw);
+  } catch (err) {
+    console.error('  Classification parsing failed:', (err as Error).message);
+    console.error('  Raw response:', classificationRaw);
+  }
+
+  const classificationOutput = {
+    generatedAt: new Date().toISOString(),
+    provider,
+    model,
+    classifications,
+  };
+
+  fs.writeFileSync(CLASSIFICATION_PATH, JSON.stringify(classificationOutput, null, 2));
+  console.log('  Classification written to reports/ai-classification.json');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 }
 
