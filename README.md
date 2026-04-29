@@ -1,14 +1,13 @@
 # 🔦 Lighthouse
 
-Lighthouse is a QA intelligence system that surfaces blindspots and suggests intentional, impactful changes without making decisions for you. Think of it as a northstar for shipping: it doesn't tell you to ship or not to ship, it tells you what your tests are actually saying so you can decide with confidence.
-
 Tests produce truth. Lighthouse produces clarity.
 
-> ✅ Complete: AI-assisted QA intelligence, multi-provider support, full CI pipeline, Allure dashboard with live hosted results, and signal generation for QA Signal Hub.
+Built to demonstrate how a production-grade QA intelligence layer thinks, going beyond whether tests pass to ask what the results actually mean.
 
-🔦 **Live Dashboard:** https://abbysudario.github.io/lighthouse-qa/
+🔦 **Live Dashboard →** https://abbysudario.github.io/lighthouse-qa/
+**Stack:** TypeScript · Playwright · Docker · GitHub Actions · Allure · Mistral AI
 
-> 💡 Lighthouse is best used alongside [QA Signal Hub](https://github.com/abbysudario/qa-signal-hub), its companion event-driven signal routing system built with n8n. QA Signal Hub receives the webhook payload from Lighthouse CI, classifies failures using AI, and automatically creates labeled GitHub Issues for actionable follow-up.
+> ✅ Complete: AI-assisted QA intelligence, multi-provider support, full CI pipeline, Allure dashboard with live hosted results.
 
 ---
 
